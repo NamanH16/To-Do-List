@@ -1,26 +1,57 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const date = require(__dirname+"/date.js");
+const mongoose = require("mongoose");
 
 const app = express();
-
-const items = ["Buy Food","Cook Food","Eat Food"];
-const workItems = [];
 
 app.set('view engine','ejs');  // tell app to use ejs as its view engine
 app.use(bodyParser.urlencoded({extended:true}));
 app.use(express.static("public"));  // css styles will be applied
 
+//connect to MongoDB by specifying port to access MongoDB server
+main().catch(err => console.log(err));
+ 
+async function main() {
+  await mongoose.connect('mongodb://localhost:27017/todolistDB');
+};
 
-app.get("/",function(req,res){    // '/' is for the home route
-    // In case I wanna write multiple lines
-    // res.write('<h1>What is up, my G?</h1>');
-    // res.write('<p>Sending with HTML<p>');
-    // res.send();
+// create schema
+const itemsSchema = {
+    name:String
+};
 
-    // with ejs use render which uses view engine
-    let day = date.getDate();
-    res.render('list',{listTitle: day,newListItems:items});    
+// create model
+const Item = mongoose.model('item',itemsSchema);
+
+// create document 
+const item1 = new Item({
+    name:"Welcome to your to-do list !"
+});
+const item2 = new Item({
+    name:"Hit the + button to add a new item."
+});
+const item3 = new Item({
+    name:"<-- Hit this to delete an item."
+});
+
+const defaultItems = [item1,item2,item3];
+
+app.get("/",function(req,res){ 
+    Item.find({},function(err,foundItems){
+        if(foundItems.length === 0){
+            Item.insertMany(defaultItems,function(err){
+                if(err){
+                    console.log(err);
+                }else{
+                    console.log("Successfully saved default items to the DB.");        
+                }
+            });
+            res.redirect("/");
+        }else
+        {
+            res.render('list',{listTitle: "Today",newListItems:foundItems});    
+        }
+    });
 });
 
 app.get("/work",function(req,res){
